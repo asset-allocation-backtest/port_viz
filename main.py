@@ -6,3 +6,8 @@ pv.action(data_list=['002200','005930','005380','000660'],
           window_hold='Q',
           rebalancing_date=-5)
 
+pv.action(data_list=['SPY','ACWI','IEI','IEF'],
+          ratio_list=[0.1,0.4,0.2,0.3],
+          country='us',
+          window_hold='Q',
+          rebalancing_date=-5)

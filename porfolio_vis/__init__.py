@@ -23,7 +23,7 @@ class strategy:
         if self.country =='kr':
             answer = pd.DataFrame()
             for name in tqdm(data_list):
-                answer[name] = portvis.get_data.get_naver_close(name)[name]
+                answer[name] = porfolio_vis.get_data.get_naver_close(name)[name]
             answer.index.name='date'
             return answer
         elif self.country =='us':
