@@ -4,10 +4,11 @@
 import numpy as np
 import pandas as pd
 from numpy.lib.stride_tricks import as_strided as stride
-import porfolio_vis.cal_return
-import porfolio_vis.get_data
-import porfolio_vis.report
+from porfolio_vis import cal_return
+from porfolio_vis import get_data
+from porfolio_vis import report
 from tqdm import tqdm
+import porfolio_vis
 
 
 class strategy:
@@ -15,6 +16,7 @@ class strategy:
         self.data_list = data_list
         self.country = country
         self.data = self.load_data(data_list)
+        self.data = self.data.loc[self.data.dropna().index[0]:]
         self.window_hold = window_hold
         self.rebalancing_date = rebalancing_date
         self.date_list = self.get_date_list(self.window_hold, self.rebalancing_date)
@@ -36,6 +38,7 @@ class strategy:
     def get_date_list(self, window_hold='Q', rebalancing_date=-5):
         w = self.data[self.data.index.hour != 9].iloc[:, :1]
         w['period'] = w.index.to_period(window_hold)
+
         w = w.reset_index().groupby('period').nth(rebalancing_date)['date']
         return list(w)
     # 그룹 만들기
@@ -108,4 +111,5 @@ def action(data_list,ratio_list, country, window_hold='Q', rebalancing_date=-5,w
     ans = cls.get_return(df, cost=cost)
     report_cls = report.Portfolio(ans)
     report_cls.report()
+    return cls
 

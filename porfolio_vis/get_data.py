@@ -8,18 +8,20 @@ from bs4 import BeautifulSoup
 # 야후 시고저종거래량
 def get_yahoo_data(name):
 
-    today = (datetime.today() +  pd.DateOffset(days=3)).strftime('%Y-%m-%d')
-    TLT = yahoo.Get.Prices(name,
-                          period=['1900-12-31', today]
-                          )
-    TLT.index = pd.to_datetime(TLT.index.strftime('%Y-%m-%d'))
-    #TLT.columns = [name]
-    TLT.index.name ='date'
-    return TLT
+    df = pdr.get_data_yahoo(name, start='1971-01-01')
+    df.index.name = 'date'
+    return df
 # 야후 수정주가
 def get_data_yahoo_close(product_name):
-    df = get_yahoo_data(product_name)[['Close']]
-    df.columns = [product_name]
+    if type(product_name) == str:
+        df = get_yahoo_data(product_name)[['Close']]
+        df.columns = [product_name]
+    elif type(product_name) == list:
+        df = pd.DataFrame()
+        for name in product_name:
+            df[name] = get_yahoo_data(name)['Close']
+    else:
+        return None
     return df
 # 네이버 시고저종거래량
 def get_data_naver(company_code):
