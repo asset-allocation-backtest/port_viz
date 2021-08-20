@@ -9,6 +9,11 @@ class cal_return:
         self.period = pd.to_datetime(periodic_weight.index)
 
 
+        # self.dd = self.get_dd(self.price)
+        # self.mdd = self.dd.min()
+        # self.cagr = self.get_cagr(self.compound_sr, self.year_dates)
+        # self.sharpe = self.get_sharpe(self.pct, self.year_dates)
+
     def compound_return(self):
         df = self.day_yield.copy()
 
@@ -77,8 +82,18 @@ class cal_return:
         ans.plot(title='보유후 n일후 수익률')
         plt.show()
         return ans
+
     @staticmethod
     def st(state):
         state = state.drop('period', axis=1)
         ans = np.log((state + 1).cumprod())
         return ans
+    @staticmethod
+    def get_dd(price):
+        return price/price.expanding().max() -1
+    @staticmethod
+    def get_cagr(compound_sr, year_dates):
+        return compound_sr.iloc[-1]**(year_dates/compound_sr.shape[0])-1
+    @staticmethod
+    def get_sharpe(pct, year_dates):
+        return ((1 + pct.mean()) ** year_dates - 1)/(pct.std() * np.sqrt(year_dates))

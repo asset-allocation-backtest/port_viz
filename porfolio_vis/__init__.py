@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # Portfolio Back testing Library
 # Copyright (c)  Heaatea Roh
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
 import numpy as np
 import pandas as pd
 from numpy.lib.stride_tricks import as_strided as stride
@@ -101,8 +103,6 @@ class strategy:
         answer = state.iloc[0].copy()
         answer.loc[answer.index] = ratio
         return answer
-
-
 def action(data_list,ratio_list, country, window_hold='Q', rebalancing_date=-5,window_fit='Q', cost=None):
     cls = strategy(data_list, country, window_hold, rebalancing_date)
     gr = cls.get_group(window_fit)
@@ -111,5 +111,14 @@ def action(data_list,ratio_list, country, window_hold='Q', rebalancing_date=-5,w
     ans = cls.get_return(df, cost=cost)
     report_cls = report.Portfolio(ans)
     report_cls.report()
+    return cls
+def action_plotly(data_list,ratio_list, country, window_hold='Q', rebalancing_date=-5,window_fit='Q', cost=None):
+    cls = strategy(data_list, country, window_hold, rebalancing_date)
+    gr = cls.get_group(window_fit)
+    df = gr.apply(cls.func, ratio_list)
+    df.index.name = 'date'
+    ans = cls.get_return(df, cost=cost)
+    # report_cls = report.Portfolio(ans)
+    report.report_plotly(ans)
     return cls
 
