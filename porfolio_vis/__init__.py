@@ -86,6 +86,7 @@ class strategy:
 
         return group
     def get_return(self, ratio_df, cost=None):
+
         ratio_df = ratio_df.replace(0,np.nan).dropna(1,'all').fillna(0)
         price = self.data.copy()[ratio_df.columns]
         cls = cal_return.cal_return(price.pct_change(), ratio_df)
@@ -94,6 +95,12 @@ class strategy:
         else:
             ans = cls.cost_cumpound_return(cost)
         return ans
+    def get_return_and_ratio(self, ratio_df, cost=0):
+        ratio_df = ratio_df.replace(0,np.nan).dropna(1,'all').fillna(0)
+        price = self.data.copy()[ratio_df.columns]
+        cls = cal_return.cal_return(price.pct_change(), ratio_df)
+        ans, daily_ratio = cls.cost_cumpound_return_and_ratio(cost)
+        return ans, daily_ratio
     def action(self, func, window_fit, cost=None):
         gr = self.get_group(window_fit)
         df = gr.apply(func)
