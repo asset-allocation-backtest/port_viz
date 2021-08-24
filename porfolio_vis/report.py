@@ -169,7 +169,7 @@ class Portfolio:
         Ret_Montly = Timeseries_Cum_Com.assign(ym=Timeseries_Cum_Com.index.strftime('%Y-%m')).groupby('ym').apply(lambda x:((1+x.pct_change()).cumprod()-1).tail(1)).droplevel(1)
 
         # plot할 때의 색깔
-        color_list = px.colors.qualitative.Dark24
+        color_list = px.colors.qualitative.Safe
 
 
 
@@ -230,6 +230,7 @@ class Portfolio:
                 ),
                 row=4, col=1
             )
+        fig.layout.annotations[0].update(x=0.105)
 
         # 테이블 표시
         fig.add_trace(
@@ -266,6 +267,371 @@ class Portfolio:
                           title_font_color="Black",
                           title_font=dict(size=30)
                           )
+
+        # fig.update_xaxes(
+        #     rangeslider_visible=False,
+        #     rangeselector=dict(
+        #         buttons=list([
+        #             dict(count=1, label="1m", step="month", stepmode="backward"),
+        #             dict(count=6, label="6m", step="month", stepmode="backward"),
+        #             dict(count=1, label="YTD", step="year", stepmode="todate"),
+        #             dict(count=1, label="1y", step="year", stepmode="backward"),
+        #             dict(step="all")
+        #         ])
+        #     )
+        # )
+
+        # fig.layout.font.update(size=20)
+
+        # fig.show()
+        # 저장
+        plotly.offline.plot(fig, filename=f'{save_name}.html', auto_open=show_auto)
+    def onereport_plotly(self, save_name='./제목없음', log_scale=True, show_auto=True):
+        """
+        인풋 데이터는 기준가 데이터
+        """
+        import plotly.offline
+        import plotly.express as px
+        import plotly.io as pio
+        import plotly.graph_objects as go
+        from plotly.subplots import make_subplots
+        # price_ans = ans.copy()
+        price_ans = self.price
+        pio.renderers.default = "browser"
+        port_result = Portfolio(price_ans)
+
+        # 결과값
+        st_name = port_result.st_name
+        Cum_Com = port_result.compound.apply(lambda x:str(round(x*100, 2))+'%')
+        CAGR = port_result.cagr.apply(lambda x:str(round(x*100, 2))+'%')
+        Sharpe = port_result.sharpe.apply(lambda x:str(round(x*100, 2))+'%')
+        Std = port_result.std.apply(lambda x:str(round(x*100, 2))+'%')
+        MDD = port_result.mdd.apply(lambda x:str(round(x*100, 2))+'%')
+        Avg_DD = port_result.dd.apply(lambda x:str(round(x.mean()*100, 2))+'%')
+        Cum_Sim = port_result.cumsum.apply(lambda x:str(round(x*100, 2))+'%')
+
+        # Plotly Table에 표시할 결과값 정리.
+        Table_df = pd.DataFrame(
+            {"Portfolio": st_name,
+             "Compound Return": Cum_Com.tolist(),
+             "CAGR": CAGR.tolist(),
+             "Sharpe Ratio":Sharpe.tolist(),
+             "Standard Deviation": Std.tolist(),
+             "MDD": MDD.tolist(),
+             "Average Drawdown": Avg_DD.tolist()
+            })
+
+        # Plotly Plot에 표시할 시계열
+        Timeseries_Cum_Com = port_result.compound_sr
+        Timeseries_DD = port_result.dd
+        # 시계열 시작점/끝점
+        TS_beg=Timeseries_Cum_Com.index.min().strftime('%Y-%m-%d')
+        TS_end=Timeseries_Cum_Com.index.max().strftime('%Y-%m-%d')
+
+        # 월별 수익률
+        Ret_Montly = Timeseries_Cum_Com.assign(ym=Timeseries_Cum_Com.index.strftime('%Y-%m')).groupby('ym').apply(lambda x:((1+x.pct_change()).cumprod()-1).tail(1)).droplevel(1)
+
+        # plot할 때의 색깔
+        color_list = px.colors.qualitative.Safe
+
+
+
+        # Subplot 객체 생성
+        fig = make_subplots(rows=4, cols=1,
+                            # shared_xaxes=True,
+                            row_width=[0.425, 0.125, 0.2, 0.25][::-1], # row_width=[ #] in reverse order. don't ask why…!
+
+                            subplot_titles=(f"Compound Return({TS_beg} - {TS_end})", "Drawdown", "Performance Analysis", "Monthly Return"),
+                            vertical_spacing=0.06,
+                            specs=[[{"type": "scatter"}],
+                                   [{"type": "scatter"}],
+                                   [{"type": "table"}],
+                                   [{"type": "bar"}],
+                                   ]
+                            )
+
+        # 전체 수익률과 DD 시계열, MOnt 표시
+        for i in range(len(Timeseries_Cum_Com.columns)):
+            # 수익률 그래프
+            fig.add_trace(
+                go.Scatter(
+                    x=Timeseries_Cum_Com.index.astype(str),
+                    y=Timeseries_Cum_Com[Timeseries_Cum_Com.columns[i]],
+                    mode="lines",
+                    name=f"{st_name[i]}",
+                    line_color=color_list[i],
+                    legendgroup=f"{st_name[i]}",
+                ),
+                row=1, col=1
+            )
+            if log_scale: # 수익률그래프 log scale 선택
+                fig.update_yaxes(type="log", row=1, col=1)
+
+            # DD 그래프
+            fig.add_trace(
+                go.Scatter(
+                    x=Timeseries_DD.index.astype(str),
+                    y=Timeseries_DD[Timeseries_DD.columns[i]],
+                    mode="lines",
+                    name=f"{st_name[i]}",
+                    line_color=color_list[i],
+                    legendgroup=f"{st_name[i]}",
+                    showlegend=False
+                ),
+                row=2, col=1
+            )
+
+            # montly return Bar
+            fig.add_trace(
+                go.Bar(
+                    x=Ret_Montly.index.astype(str),
+                    y=Ret_Montly[Ret_Montly.columns[i]],
+                    legendgroup=f"{st_name[i]}",
+                    name=f"{st_name[i]}",
+                    marker_color=color_list[i],
+                    showlegend=False
+                ),
+                row=4, col=1
+            )
+        fig.layout.annotations[0].update(x=0.105)
+
+        # 테이블 표시
+        fig.add_trace(
+            go.Table(
+                header=dict(
+                    # values=["Date", "Number<br>Transactions", "Output<br>Volume (BTC)", "Market<br>Price", "Hash<br>Rate", "Cost per<br>trans-USD", "Mining<br>Revenue-USD", "Trasaction<br>fees-BTC"],
+                    # 띄어쓰기를 <br>로 마크다운처럼 쓰는건가보넹
+                    values=["Portfolio", "Compound Return", "CAGR", "Sharpe Ratio", "Standard Deviation", "MDD", "Average Drawdown"], # 표 column
+                    font=dict(size=10),
+                    align="left"
+                ),
+                cells=dict(
+                    values=[Table_df[k].tolist() for k in Table_df.columns],        # 표 셀의 값
+                    align = "left"
+                )
+            ),
+            row=3, col=1
+        )
+        # 왼쪽 정렬 기능 찾아내는 거 실패!!
+        # fig.layout.annotations[0].update(align='left')
+        # fig.layout.annotations[1].update(align='left')
+        # fig.layout.annotations[2].update(align='left')
+        # 어쩔 수 없이 그냥 숫자로 맞춰놔야지 일단..
+        fig.layout.annotations[0].update(x=0.105)
+        fig.layout.annotations[1].update(x=0.025)
+        fig.layout.annotations[2].update(x=0.05)
+        fig.layout.annotations[3].update(x=0.035)
+        fig.update_layout(
+                        height=1000,
+                        showlegend=True,
+                        title_text="Portfolio Analysis",
+                        )
+        fig.update_layout(title_font_family="Arial",
+                          title_font_color="Black",
+                          title_font=dict(size=30)
+                          )
+
+        # fig.update_xaxes(
+        #     rangeslider_visible=False,
+        #     rangeselector=dict(
+        #         buttons=list([
+        #             dict(count=1, label="1m", step="month", stepmode="backward"),
+        #             dict(count=6, label="6m", step="month", stepmode="backward"),
+        #             dict(count=1, label="YTD", step="year", stepmode="todate"),
+        #             dict(count=1, label="1y", step="year", stepmode="backward"),
+        #             dict(step="all")
+        #         ])
+        #     )
+        # )
+
+        # fig.layout.font.update(size=20)
+
+        # fig.show()
+        # 저장
+        plotly.offline.plot(fig, filename=f'{save_name}.html', auto_open=show_auto)
+class OnePortfolio(Portfolio):
+    def __init__(self, price, stacked_ratio, st_name=None):
+        price.index = pd.to_datetime(price.index)
+        price = price.dropna()
+
+        self.st_name = st_name if st_name else price.columns
+        self.price = price
+        self.stacked_ratio = stacked_ratio.copy()
+    def onereport_plotly(self, save_name='./제목없음', log_scale=True, show_auto=True):
+        """
+        인풋 데이터는 기준가 데이터
+        """
+        import plotly.offline
+        import plotly.express as px
+        import plotly.io as pio
+        import plotly.graph_objects as go
+        from plotly.subplots import make_subplots
+        # price_ans = ans.copy()
+        price_ans = self.price
+        pio.renderers.default = "browser"
+        port_result = Portfolio(price_ans)
+
+        # 결과값
+        st_name = port_result.st_name
+        Cum_Com = port_result.compound.apply(lambda x:str(round(x*100, 2))+'%')
+        CAGR = port_result.cagr.apply(lambda x:str(round(x*100, 2))+'%')
+        Sharpe = port_result.sharpe.apply(lambda x:str(round(x*100, 2))+'%')
+        Std = port_result.std.apply(lambda x:str(round(x*100, 2))+'%')
+        MDD = port_result.mdd.apply(lambda x:str(round(x*100, 2))+'%')
+        Avg_DD = port_result.dd.apply(lambda x:str(round(x.mean()*100, 2))+'%')
+        Cum_Sim = port_result.cumsum.apply(lambda x:str(round(x*100, 2))+'%')
+
+        # Plotly Table에 표시할 결과값 정리.
+        Table_df = pd.DataFrame(
+            {"Portfolio": st_name,
+             "Compound Return": Cum_Com.tolist(),
+             "CAGR": CAGR.tolist(),
+             "Sharpe Ratio":Sharpe.tolist(),
+             "Standard Deviation": Std.tolist(),
+             "MDD": MDD.tolist(),
+             "Average Drawdown": Avg_DD.tolist()
+            })
+
+        # Plotly Plot에 표시할 시계열
+        Timeseries_Cum_Com = port_result.compound_sr
+        Timeseries_DD = port_result.dd
+        # 시계열 시작점/끝점
+        TS_beg=Timeseries_Cum_Com.index.min().strftime('%Y-%m-%d')
+        TS_end=Timeseries_Cum_Com.index.max().strftime('%Y-%m-%d')
+
+        # 월별 수익률
+        Ret_Montly = Timeseries_Cum_Com.assign(ym=Timeseries_Cum_Com.index.strftime('%Y-%m')).groupby('ym').apply(lambda x:((1+x.pct_change()).cumprod()-1).tail(1)).droplevel(1)
+
+        # plot할 때의 색깔
+        color_list = px.colors.qualitative.Dark24
+        color_list2 = px.colors.qualitative.Pastel
+
+
+
+        # Subplot 객체 생성
+        fig = make_subplots(rows=5, cols=1,
+                            # shared_xaxes=True,
+                            row_width=[0.375, 0.075, 0.15, 0.2, 0.2][::-1], # row_width=[ #] in reverse order. don't ask why…!
+                            subplot_titles=(f"Compound Return({TS_beg} - {TS_end})", "Drawdown", "Performance Analysis", "Monthly Return"),
+                            vertical_spacing=0.06,
+                            specs=[[{"type": "scatter"}],
+                                   [{"type": "scatter"}],
+                                   [{"type": "table"}],
+                                   [{"type": "bar"}],
+                                   [{"type": "scatter"}],
+                                   ]
+                            )
+
+        # 전체 수익률과 DD 시계열, MOnt 표시
+        for i in range(len(Timeseries_Cum_Com.columns)):
+            # 수익률 그래프
+            fig.add_trace(
+                go.Scatter(
+                    x=Timeseries_Cum_Com.index.astype(str),
+                    y=Timeseries_Cum_Com[Timeseries_Cum_Com.columns[i]],
+                    mode="lines",
+                    name=f"{st_name[i]}",
+                    line_color=color_list[i],
+                    legendgroup=f"{st_name[i]}",
+                ),
+                row=1, col=1
+            )
+            if log_scale: # 수익률그래프 log scale 선택
+                fig.update_yaxes(type="log", row=1, col=1)
+
+            # DD 그래프
+            fig.add_trace(
+                go.Scatter(
+                    x=Timeseries_DD.index.astype(str),
+                    y=Timeseries_DD[Timeseries_DD.columns[i]],
+                    mode="lines",
+                    name=f"{st_name[i]}",
+                    line_color=color_list[i],
+                    legendgroup=f"{st_name[i]}",
+                    showlegend=False
+                ),
+                row=2, col=1
+            )
+
+            # montly return Bar
+            fig.add_trace(
+                go.Bar(
+                    x=Ret_Montly.index.astype(str),
+                    y=Ret_Montly[Ret_Montly.columns[i]],
+                    legendgroup=f"{st_name[i]}",
+                    name=f"{st_name[i]}",
+                    marker_color=color_list[i],
+                    showlegend=False
+                ),
+                row=4, col=1
+            )
+        fig.layout.annotations[0].update(x=0.105)
+
+        # 테이블 표시
+        fig.add_trace(
+            go.Table(
+                header=dict(
+                    # values=["Date", "Number<br>Transactions", "Output<br>Volume (BTC)", "Market<br>Price", "Hash<br>Rate", "Cost per<br>trans-USD", "Mining<br>Revenue-USD", "Trasaction<br>fees-BTC"],
+                    # 띄어쓰기를 <br>로 마크다운처럼 쓰는건가보넹
+                    values=["Portfolio", "Compound Return", "CAGR", "Sharpe Ratio", "Standard Deviation", "MDD", "Average Drawdown"], # 표 column
+                    font=dict(size=10),
+                    align="left"
+                ),
+                cells=dict(
+                    values=[Table_df[k].tolist() for k in Table_df.columns],        # 표 셀의 값
+                    align = "left"
+                )
+            ),
+            row=3, col=1
+        )
+        for col_i in range(len(self.stacked_ratio.columns)):
+            fig.add_trace(
+                            go.Scatter(
+                                x=self.stacked_ratio.index, y=self.stacked_ratio.iloc[:,col_i],
+                                mode='lines',
+                                name=f'{self.stacked_ratio.columns[col_i]}',
+                                line=dict(width=0.5, color=color_list2[col_i]),
+                                stackgroup='one',
+                                legendgroup='stacked line',
+                                groupnorm='percent', # sets the normalization for the sum of the stackgroup
+                                showlegend=True,
+
+                                        ),
+                            row=5, col=1
+                         )
+        # 왼쪽 정렬 기능 찾아내는 거 실패!!
+        # fig.layout.annotations[0].update(align='left')
+        # fig.layout.annotations[1].update(align='left')
+        # fig.layout.annotations[2].update(align='left')
+        # 어쩔 수 없이 그냥 숫자로 맞춰놔야지 일단..
+        fig.layout.annotations[0].update(x=0.105)
+        fig.layout.annotations[1].update(x=0.025)
+        fig.layout.annotations[2].update(x=0.05)
+        fig.layout.annotations[3].update(x=0.035)
+        fig.update_layout(
+                        height=1000,
+                        showlegend=True,
+                        title_text="Portfolio Analysis",
+                        # legend=list(tracegroupgap=150),
+                        )
+        fig.update_layout(title_font_family="Arial",
+                          title_font_color="Black",
+                          title_font=dict(size=30)
+                          )
+
+        # fig.update_xaxes(
+        #     rangeslider_visible=False,
+        #     rangeselector=dict(
+        #         buttons=list([
+        #             dict(count=1, label="1m", step="month", stepmode="backward"),
+        #             dict(count=6, label="6m", step="month", stepmode="backward"),
+        #             dict(count=1, label="YTD", step="year", stepmode="todate"),
+        #             dict(count=1, label="1y", step="year", stepmode="backward"),
+        #             dict(step="all")
+        #         ])
+        #     )
+        # )
+
         # fig.layout.font.update(size=20)
 
         # fig.show()

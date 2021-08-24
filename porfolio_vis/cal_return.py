@@ -47,7 +47,14 @@ class cal_return:
         period = self.periodic_weight.loc[state.index[0]]
         temp = (period * ans)
         return (temp.iloc[-1]) / temp.iloc[-1].sum()
+    def port_changed_func_daily(self,state):
+        state = state.drop('period', axis=1)
+        ans = (state + 1).cumprod()
+        period = self.periodic_weight.loc[state.index[0]]
+        temp = (period * ans)
+        return temp
     def cost_cumpound_return(self,cost):
+        # price.pct_change(), ratio_df
         df = self.day_yield.copy()
         df.loc[self.period, 'period'] = range(len(self.period))
         df['period'] = df['period'].fillna(method='ffill')
@@ -63,6 +70,24 @@ class cal_return:
         temp.columns = ['price']
         ans = temp.cumprod()
         return ans
+    def cost_cumpound_return_and_ratio(self,cost):
+        # price.pct_change(), ratio_df
+        df = self.day_yield.copy()
+        df.loc[self.period, 'period'] = range(len(self.period))
+        df['period'] = df['period'].fillna(method='ffill')
+
+        temp = df.groupby('period').apply(self.get_return).reset_index()
+        temp2 = df.groupby('period').apply(self.port_changed_func)
+        daily_ratio = df.groupby('period').apply(self.port_changed_func_daily)
+
+        temp3 = self.periodic_weight.copy()
+        temp3.index = temp2.index
+
+        temp.loc[temp.groupby('period')[0].head(1).index, 0] = list(temp.groupby('period')[0].first() * (1 + abs(temp2 - temp3).sum(1) * (-cost)))
+        temp = temp.set_index('date')[[0]]
+        temp.columns = ['price']
+        ans = temp.cumprod()
+        return ans, daily_ratio
     def get_stastics(self):
         from matplotlib import pyplot as plt
         df = self.day_yield.copy()
