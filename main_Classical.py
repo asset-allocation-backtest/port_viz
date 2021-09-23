@@ -1,6 +1,5 @@
 import random
 
-import numpy as np
 import pandas as pd
 import porfolio_vis as pv
 
@@ -42,17 +41,13 @@ DD.iloc[0]=1
 
 mu = DD.pct_change()
 # 월별 수익률
-mu_m = mu.resample('BM').apply(lambda x:(1+x[['60:40 Portfolio(M)','60:40 Portfolio(Q)']]).cumprod().tail(1).sub(1)).droplevel(1)
+mu_m = mu.assign(ym=lambda x:x.index.strftime('%Y%m')).groupby('ym').apply(lambda x:(1+x).cumprod().tail(1)).droplevel(1)
 
 # 월별 수익률 표준편차
-std_m = mu.resample('BM').apply(lambda x:x[['60:40 Portfolio(M)','60:40 Portfolio(Q)']].std())
+std_m = mu.assign(ym=lambda x:x.index.strftime('%Y%m')).groupby('ym').apply(lambda x:x.std())
 
-from random import sample
-import numpy as np
-
-rnds = np.array(sample(sorted(np.linspace(0, 1, 10000)), 2500))
-rnd_list = np.array([[i,j] for i, j in zip(rnds, 1-rnds)]).reshape(2, -1)
-mu_other = mu.groupby(pd.Grouper(freq='BM')).apply(lambda x:(1+x[['SPY', 'IEI']]).cumprod().tail(1).sub(1).dot(rnd_list)).droplevel(1)
-std_other = mu.groupby(pd.Grouper(freq='BM')).apply(lambda x:(1+x[['SPY', 'IEI']]).cumprod().sub(1).dot(rnd_list).std())
-
+from random import uniform
+from tqdm import tqdm
+for iter in tqdm(range(100)):
+    mu_m[f'Port{iter}_mu'] = mu.assign(ym=lambda x:x.index.strftime('%Y%m')).groupby('ym').apply(lambda x:(1+x).cumprod().tail(1)).assign(Port=lambda x:(x['SPY']*rnd)+x['IEI']*(1-rnd)).droplevel(1)['Port']
 
