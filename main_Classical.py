@@ -49,6 +49,5 @@ std_m = mu.assign(ym=lambda x:x.index.strftime('%Y%m')).groupby('ym').apply(lamb
 from random import uniform
 from tqdm import tqdm
 for iter in tqdm(range(100)):
-    rnd = uniform(0, 1)
     mu_m[f'Port{iter}_mu'] = mu.assign(ym=lambda x:x.index.strftime('%Y%m')).groupby('ym').apply(lambda x:(1+x).cumprod().tail(1)).assign(Port=lambda x:(x['SPY']*rnd)+x['IEI']*(1-rnd)).droplevel(1)['Port']
 
