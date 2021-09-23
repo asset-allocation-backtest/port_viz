@@ -177,7 +177,6 @@ class Portfolio:
         fig = make_subplots(rows=4, cols=1,
                             # shared_xaxes=True,
                             row_width=[0.425, 0.125, 0.2, 0.25][::-1], # row_width=[ #] in reverse order. don't ask why…!
-
                             subplot_titles=(f"Compound Return({TS_beg} - {TS_end})", "Drawdown", "Performance Analysis", "Monthly Return"),
                             vertical_spacing=0.06,
                             specs=[[{"type": "scatter"}],
