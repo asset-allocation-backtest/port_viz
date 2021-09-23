@@ -1,8 +1,11 @@
-import random
-
-import numpy as np
 import pandas as pd
+from random import sample
+import numpy as np
 import porfolio_vis as pv
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+import plotly.express as px
+from tqdm import tqdm
 
 
 DD = pd.DataFrame()
@@ -27,9 +30,7 @@ DD['60:40 Portfolio(Q)'] = ans[ans.columns[0]]
 pv.report.OnePortfolio(DD, daily_ratio).onereport_plotly(save_name='./output/Classical_Q', show_auto=False)
 
 
-DD['S&P500'] =  pv.get_data.get_data_yahoo_close('^GSPC')
-
-
+DD['S&P500'] = pv.get_data.get_data_yahoo_close('^GSPC')
 report_cls = pv.report.Portfolio(DD).report_plotly(save_name='./output/Classical')
 
 
@@ -43,16 +44,46 @@ DD.iloc[0]=1
 mu = DD.pct_change()
 # 월별 수익률
 mu_m = mu.resample('BM').apply(lambda x:(1+x[['60:40 Portfolio(M)','60:40 Portfolio(Q)']]).cumprod().tail(1).sub(1)).droplevel(1)
-
 # 월별 수익률 표준편차
 std_m = mu.resample('BM').apply(lambda x:x[['60:40 Portfolio(M)','60:40 Portfolio(Q)']].std())
 
-from random import sample
-import numpy as np
+mu_m = mu.groupby(pd.Grouper(freq='BM')).apply(lambda x:(1+x[['SPY', 'IEI']]).cumprod().tail(1).sub(1).dot([0.6, 0.4])).droplevel(1)
+std_m = mu.groupby(pd.Grouper(freq='BM')).apply(lambda x:(1+x[['SPY', 'IEI']]).cumprod().sub(1).dot([0.6, 0.4]).std())
 
-rnds = np.array(sample(sorted(np.linspace(0, 1, 10000)), 2500))
+rnds = np.array(sample(sorted(np.linspace(0, 1, 5000)), 2500))
 rnd_list = np.array([[i,j] for i, j in zip(rnds, 1-rnds)]).reshape(2, -1)
 mu_other = mu.groupby(pd.Grouper(freq='BM')).apply(lambda x:(1+x[['SPY', 'IEI']]).cumprod().tail(1).sub(1).dot(rnd_list)).droplevel(1)
 std_other = mu.groupby(pd.Grouper(freq='BM')).apply(lambda x:(1+x[['SPY', 'IEI']]).cumprod().sub(1).dot(rnd_list).std())
 
 
+
+
+
+
+
+color_list = px.colors.qualitative.Safe
+fig = make_subplots(rows=1, cols=1, specs=[[{"type": "scatter"}]])
+for i in tqdm(std_other.index):
+    fig.add_trace(
+        go.Scatter(
+            x=std_other.loc[i].values, y=mu_other.loc[i].values,
+            mode="markers",
+            legendgroup=f"random",
+            name=f'random',
+            line_color=color_list[0],
+        ),
+        row=1, col=1
+    )
+for i in tqdm(std_other.index):
+    fig.add_trace(
+        go.Scatter(
+            x=[std_m.loc[i]], y=[mu_m.loc[i]],
+            mode="markers",
+            legendgroup=f"Portfolio",
+            name=f'Portfolio',
+            line_color=color_list[1],
+        ),
+        row=1, col=1
+    )
+fig.update_layout(showlegend=False)
+fig.show()
