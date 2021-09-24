@@ -67,7 +67,6 @@ class strategy:
                     df_list.append(temp)
                 else:
                     pass
-
         else:
             v = self.data.values
             d0, d1 = v.shape
@@ -76,6 +75,46 @@ class strategy:
             df_list = []
             for row, values in zip(self.data.index[window_fit:], a):
                 temp = pd.DataFrame(values, columns=self.data.columns)
+                if row in self.date_list:
+                    temp.index = pd.MultiIndex.from_tuples([(row, num) for num in temp.index])
+                    df_list.append(temp)
+                else:
+                    pass
+        rolled_df = pd.concat(df_list)
+        group = rolled_df.groupby(level=0, **kwargs)
+
+        return group
+    def get_data_group(self, data, window_fit, **kwargs):
+    # 월별, 연도별, 쿼터별 window fit
+        if window_fit in ['D','M','Q','Y','W']:
+            if window_fit =='D':
+                period = pd.DateOffset(days=1)
+            elif window_fit == 'M':
+                period = pd.DateOffset(months=1)
+            elif window_fit == 'Q':
+                period = pd.DateOffset(months=3)
+            elif window_fit == 'Y':
+                period = pd.DateOffset(months=12)
+            elif window_fit == 'W':
+                period = pd.DateOffset(weeks=1)
+            limit = data.index[0] + period
+            df_list = []
+
+            for date in self.date_list:
+                if date > limit:
+                    temp = data[date-period :date]
+                    temp.index = pd.MultiIndex.from_tuples([(temp.index[-1],num) for num in range(len(temp.index))])
+                    df_list.append(temp)
+                else:
+                    pass
+        else:
+            v = data.values
+            d0, d1 = v.shape
+            s0, s1 = v.strides
+            a = stride(v, (d0 - (window_fit - 1), window_fit, d1), (s0, s0, s1))
+            df_list = []
+            for row, values in zip(data.index[window_fit:], a):
+                temp = pd.DataFrame(values, columns=data.columns)
                 if row in self.date_list:
                     temp.index = pd.MultiIndex.from_tuples([(row, num) for num in temp.index])
                     df_list.append(temp)

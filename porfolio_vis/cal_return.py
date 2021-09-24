@@ -79,6 +79,7 @@ class cal_return:
         temp = df.groupby('period').apply(self.get_return).reset_index()
         temp2 = df.groupby('period').apply(self.port_changed_func)
         daily_ratio = df.groupby('period').apply(self.port_changed_func_daily)
+        daily_ratio.div(daily_ratio.sum(1), axis=0).cumsum(1)
 
         temp3 = self.periodic_weight.copy()
         temp3.index = temp2.index
